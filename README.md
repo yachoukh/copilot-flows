@@ -16,17 +16,18 @@ This repo includes skills in [`.github/skills/`](.github/skills/) that are used 
 |-------|-------------|
 | `/write-a-prd` | Interview → structured PRD with user stories, modules, config schema |
 | `/prd-to-issues` | PRD → vertical-slice GitHub issues with dependency graph |
+| `/issues-to-tasks` | GitHub issues → TASKS.md tracking file with status table and dependency graph |
 | `/prd-to-plan` | PRD → multi-phase implementation plan saved as local Markdown |
 | `/grill-me` | Stress-test a plan or design through relentless questioning |
 
 ### Skill Attribution
 
-The `/write-a-prd`, `/prd-to-issues`, `/prd-to-plan`, and `/grill-me` skills are from [mattpocock/skills](https://github.com/mattpocock/skills) by [Matt Pocock](https://github.com/mattpocock). See that repo for the latest versions and additional skills.
+The `/write-a-prd`, `/prd-to-issues`, `/prd-to-plan`, and `/grill-me` skills are from [mattpocock/skills](https://github.com/mattpocock/skills) by [Matt Pocock](https://github.com/mattpocock). See that repo for the latest versions and additional skills. The `/issues-to-tasks` skill is original to this repo.
 
 ## Prerequisites
 
 - **GitHub Copilot CLI** — installed and authenticated
-- **GitHub CLI (`gh`)** — required for `/prd-to-issues` and any workflow step that creates GitHub issues or pull requests. [Install guide](https://cli.github.com/)
+- **GitHub CLI (`gh`)** — required for `/prd-to-issues`, `/issues-to-tasks`, and any workflow step that creates GitHub issues or pull requests. [Install guide](https://cli.github.com/)
 - **Git** — with worktree support (for parallel implementation workflows)
 
 ## Installation

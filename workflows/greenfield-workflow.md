@@ -57,9 +57,11 @@ break down the PRD into issues
   - "Blocked by" dependencies
   - User stories addressed
 
+**Skill**: `/issues-to-tasks`
+
 **Follow-up prompt** to create a tracking file:
 ```
-Add this table and dependency graph to a file called TASKS.md — the issue number column should have a URL to the GitHub issue, also add a column indicating whether implemented or not
+generate TASKS.md from the PRD issues
 ```
 
 ---
@@ -212,6 +214,7 @@ build and run using cli with this ip and port <host>, <port> use <N> clients
 |-------|-------|---------|
 | `/write-a-prd` | 1 | Interview → structured PRD with user stories, modules, config schema |
 | `/prd-to-issues` | 2 | PRD → vertical-slice GitHub issues with dependency graph |
+| `/issues-to-tasks` | 2 | GitHub issues → TASKS.md tracking file with status and dependency graph |
 
 ## Agent Types Used
 
