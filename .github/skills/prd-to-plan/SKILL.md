@@ -11,7 +11,7 @@ Break a PRD into a phased implementation plan using vertical slices (tracer bull
 
 ### 1. Confirm the PRD is in context
 
-The PRD should already be in the conversation. If it isn't, ask the user to paste it or point you to the file.
+The PRD should already be in the conversation. If it isn't, ask the user to paste it, point you to the file, or provide the Azure DevOps Epic work item ID so you can fetch it using the `mcp_ado_wit_get_work_item` tool.
 
 ### 2. Explore the codebase
 
@@ -62,7 +62,7 @@ Create `./plans/` if it doesn't exist. Write the plan as a Markdown file named a
 <plan-template>
 # Plan: <Feature Name>
 
-> Source PRD: <brief identifier or link>
+> Source PRD: [Epic #<work-item-id>](https://dev.azure.com/{org}/{project}/_workitems/edit/<work-item-id>)
 
 ## Architectural decisions
 

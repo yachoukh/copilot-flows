@@ -1,19 +1,21 @@
 ---
 name: prd-to-issues
-description: Break a PRD into independently-grabbable GitHub issues using tracer-bullet vertical slices. Use when user wants to convert a PRD to issues, create implementation tickets, or break down a PRD into work items.
+description: Break a PRD into independently-grabbable Azure DevOps User Story work items using tracer-bullet vertical slices. Use when user wants to convert a PRD to work items, create implementation tickets, or break down a PRD into work items.
 ---
 
-# PRD to Issues
+# PRD to Work Items
 
-Break a PRD into independently-grabbable GitHub issues using vertical slices (tracer bullets).
+Break a PRD into independently-grabbable Azure DevOps User Story work items using vertical slices (tracer bullets).
 
 ## Process
 
 ### 1. Locate the PRD
 
-Ask the user for the PRD GitHub issue number (or URL).
+Ask the user for the PRD Epic work item ID.
 
-If the PRD is not already in your context window, fetch it with `gh issue view <number>` (with comments).
+If the PRD is not already in your context window, fetch it using the `mcp_ado_wit_get_work_item` tool with the work item ID.
+
+> **Fallback**: `az boards work-item show --id <id>`
 
 ### 2. Explore the codebase (optional)
 
@@ -21,7 +23,7 @@ If you have not already explored the codebase, do so to understand the current s
 
 ### 3. Draft vertical slices
 
-Break the PRD into **tracer bullet** issues. Each issue is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
+Break the PRD into **tracer bullet** work items. Each work item is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
 
 Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
 
@@ -49,32 +51,41 @@ Ask the user:
 
 Iterate until the user approves the breakdown.
 
-### 5. Create the GitHub issues
+### 5. Create the Azure DevOps work items
 
-For each approved slice, create a GitHub issue using `gh issue create`. Use the issue body template below.
+For each approved slice, create an Azure DevOps **User Story** work item. Create work items in dependency order (blockers first) so you can reference real work item IDs in dependency links.
 
-Create issues in dependency order (blockers first) so you can reference real issue numbers in the "Blocked by" field.
+For each work item:
 
-<issue-template>
-## Parent PRD
+1. **Create the User Story** using the `mcp_ado_wit_create_work_item` tool:
+   - **type**: `User Story`
+   - **title**: The slice title
+   - **description**: The work item body (use the template below)
 
-#<prd-issue-number>
+2. **Link to the parent Epic** using the `mcp_ado_wit_add_child_work_items` tool:
+   - **parentId**: The PRD Epic work item ID
+   - **childIds**: The newly created User Story ID
 
+3. **Add dependency links** (if blocked by other slices) using the `mcp_ado_wit_work_items_link` tool:
+   - Link the current work item to each blocker using a predecessor/successor relationship
+
+> **Fallback** (if MCP tools are unavailable):
+> ```bash
+> az boards work-item create --type "User Story" --title "<title>" --description "<description>"
+> az boards work-item relation add --id <child-id> --relation-type "System.LinkTypes.Hierarchy-Reverse" --target-id <epic-id>
+> az boards work-item relation add --id <id> --relation-type "System.LinkTypes.Dependency-Reverse" --target-id <blocker-id>
+> ```
+
+<work-item-template>
 ## What to build
 
-A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation. Reference specific sections of the parent PRD rather than duplicating content.
+A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation. Reference specific sections of the parent PRD Epic rather than duplicating content.
 
 ## Acceptance criteria
 
 - [ ] Criterion 1
 - [ ] Criterion 2
 - [ ] Criterion 3
-
-## Blocked by
-
-- Blocked by #<issue-number> (if any)
-
-Or "None - can start immediately" if no blockers.
 
 ## User stories addressed
 
@@ -83,6 +94,8 @@ Reference by number from the parent PRD:
 - User story 3
 - User story 7
 
-</issue-template>
+</work-item-template>
 
-Do NOT close or modify the parent PRD issue.
+> **Note**: Parent Epic and dependency ("blocked by") relationships are captured as formal Azure DevOps work item links rather than text in the description body. This enables Azure DevOps to display the dependency graph natively in Boards.
+
+Do NOT close or modify the parent PRD Epic.
