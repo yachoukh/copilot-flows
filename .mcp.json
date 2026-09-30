@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "azure-devops": {
+      "type": "http",
+      "url": "https://mcp.dev.azure.com/{organization}",
+      "headers": {
+        "X-MCP-Toolsets": "wit,repos"
+      }
+    }
+  }
+}
