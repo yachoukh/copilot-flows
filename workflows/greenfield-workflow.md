@@ -1,226 +1,99 @@
-# Greenfield App Development Workflow
+# Greenfield Workflow: Idea → Agent Implementation
 
-A structured workflow for building a complete application from scratch using AI agents, skills, and parallel execution — from a rough PRD to a fully tested, documented, and packaged codebase.
+Take a new idea to working, reviewed code with a small set of composable skills. This follows the **main flow** from [mattpocock/skills](https://github.com/mattpocock/skills) (see its `ask-matt` skill), adapted for GitHub Copilot CLI with GitHub or Azure DevOps as the tracker.
+
+```mermaid
+flowchart LR
+    S["/setup-matt-pocock-skills<br/>(once per repo)"] --> G["/grill-with-docs<br/>align on the idea"]
+    G --> SP["/to-spec<br/>publish spec"]
+    SP --> T["/to-tickets<br/>tracer-bullet tickets"]
+    T --> I["/implement-spec<br/>parallel agents"]
+    I --> R["/retro"]
+```
+
+Five commands take you from idea to a reviewed PR. Everything else (worktrees, TDD, merging, code review, PR body) happens inside `/implement-spec`.
 
 ---
 
-## Phase 1: PRD Creation
+## 0. Setup (once per repo)
 
-**Goal**: Turn your rough PRD into a formal, structured Product Requirements Document.
-
-**Skill**: `/write-a-prd`
-
-**Prompt**:
 ```
-improve and format this @PRD.md as a PRD
+/setup-matt-pocock-skills
 ```
 
-**What happens**:
-- The skill interviews you with targeted questions (one at a time, multiple choice):
-  - What problem does this solve?
-  - Who is the target user?
-  - Feature scope — what's in, what's out?
-  - Module/component design validation
-  - Test coverage expectations
-  - Deployment scope
-- Rewrites the document into a structured PRD:
-  - Problem Statement & Solution
-  - User Stories (numbered, persona-tagged)
-  - Implementation Decisions (modules, architecture, config schema)
-  - Testing Decisions (philosophy + per-module coverage)
-  - Out of Scope
-  - Appendix (reference material)
-- Optionally submits as a GitHub issue
+Picks the issue tracker (**GitHub** via `gh`, or **Azure DevOps** via `az boards`, each falling back to its remote MCP server in `.mcp.json`), triage labels, and where `GLOSSARY.md` and ADRs live. It writes `docs/agents/*.md` and an `## Agent skills` block in `AGENTS.md`/`CLAUDE.md`.
+
+## 1. Align: grill the idea
+
+```
+/grill-with-docs I want to build <rough idea, or @idea.md>
+```
+
+The agent interviews you in rounds, giving a recommended answer for each question, until every branch of the design is settled. As terms and hard-to-reverse decisions come up, it records them in `GLOSSARY.md` and `docs/adr/`. Future agents then speak your language.
+
+> No repo yet, or not a code task? Use `/grill-me` instead. It runs the same interview without writing any files.
+
+## 2. Spec
+
+```
+/to-spec
+```
+
+Synthesizes the conversation into a spec (problem, solution, user stories, implementation and testing decisions, out of scope), confirms the test seams with you, and publishes it to the tracker as a `ready-for-agent` issue or work item. No new interview.
+
+## 3. Tickets
+
+```
+/to-tickets
+```
+
+Breaks the spec into **tracer-bullet** vertical slices, each small enough for one fresh context window, and quizzes you on granularity and blocking edges. It then publishes them to the tracker with **native blocking links** (GitHub issue dependencies, or Azure DevOps Predecessor links).
+
+> **Context hygiene**: keep steps 1–3 in **one session**, so the spec and tickets build on the full grilling. Don't clear or compact until the tickets are published.
+
+## 4. Implement
+
+```
+/implement-spec <spec issue number or URL>
+```
+
+Treats the tickets as a **task graph** and runs the whole spec on one **integration branch**:
+
+1. Runs background **implementer subagents** for every ticket on the ready frontier, each in its own git worktree, each driving `/tdd` (red → green → refactor)
+2. Merges each finished ticket into the integration branch with a merger subagent, then starts the tickets that just became unblocked
+3. Runs `/code-review` (standards + spec, as parallel sub-agents) on the integration branch and fixes the findings
+4. Opens or readies the PR (body shaped by `/pr`) and resolves the tickets
+
+> Prefer to drive it yourself? Run `/implement <ticket>` per ticket, clearing context between tickets. For a small change that doesn't need tickets, run `/implement` straight after step 1.
+
+## 5. Retro
+
+```
+/retro
+```
+
+Run it in the same session, before you clear. It suggests changes to the agent's **environment**, not the code: automated checks, coding standards, steering files, navigation pointers. The next build then starts from a better setup.
 
 ---
 
-## Phase 2: Break PRD into Issues
+## Skills used
 
-**Goal**: Convert the PRD into independently-grabbable GitHub issues using vertical slices.
+| Skill | Step | Purpose |
+| --- | --- | --- |
+| `/setup-matt-pocock-skills` | 0 | Configure tracker (GitHub/Azure DevOps), labels, doc layout |
+| `/grill-with-docs` | 1 | Interview to shared understanding; builds `GLOSSARY.md` + ADRs |
+| `/to-spec` | 2 | Conversation → spec on the tracker |
+| `/to-tickets` | 3 | Spec → tracer-bullet tickets with blocking links |
+| `/implement-spec` | 4 | Parallel, worktree-based implementation on an integration branch |
+| `/tdd`, `/code-review`, `/pr` | 4 | Used inside `/implement-spec` |
+| `/retro` | 5 | Improve the agent environment |
 
-**Skill**: `/prd-to-issues`
-
-**Prompt**:
-```
-break down the PRD into issues
-```
-
-**What happens**:
-- Reads the PRD and proposes tracer-bullet vertical slices
-- Each slice cuts end-to-end through the stack
-- Includes a dependency graph between issues
-- Asks for confirmation on granularity, ordering, dependencies
-- Creates GitHub issues with:
-  - Parent PRD reference
-  - "What to build" section with implementation details
-  - Acceptance criteria checklist
-  - "Blocked by" dependencies
-  - User stories addressed
-
-**Skill**: `/issues-to-tasks`
-
-**Follow-up prompt** to create a tracking file:
-```
-generate TASKS.md from the PRD issues
-```
-
----
-
-## Phase 3: Sequential Implementation (Foundation)
-
-**Goal**: Build the foundation issues that everything else depends on.
-
-**Prompt**:
-```
-Now start implementation by looking at PRD.md and selecting a task from TASKS.md taking into account the dependency graph. Leverage /fleet whenever possible to do work in parallel. For each task create a git worktree. After completing the task create a pull request that should be reviewed (check acceptance criteria of issue) by you before merging it.
-```
-
-**What happens for each issue**:
-
-1. **Creates a git worktree** on a feature branch
-2. **Launches an implementation agent** (`general-purpose`, background) with a detailed prompt containing:
-   - Working directory and existing code context
-   - Exact specifications (structs, function signatures, behavior)
-   - Test requirements
-   - Build/verify steps and commit message template
-3. **Verifies** — runs linter + tests in the worktree
-4. **Launches a code-review agent** against the diff to check acceptance criteria
-5. **Fixes** any review findings (nil checks, validation gaps, etc.)
-6. **Pushes, creates PR, merges** (squash + delete branch)
-7. **Cleans up** — removes worktree, pulls main, updates TASKS.md (❌ → ✅)
-
-Foundation issues are built sequentially since later issues depend on them.
-
----
-
-## Phase 4: Parallel Feature Implementation
-
-**Goal**: Implement all unblocked issues simultaneously using parallel agents.
-
-**Key insight**: Once the foundation is merged, many issues have no dependencies on each other — only on `main`. Launch them all at once.
-
-**What happens**:
-
-1. **Creates all worktrees at once** (one per unblocked issue)
-2. **Launches N implementation agents in parallel** — each works independently in its own worktree
-3. **As agents complete**: verifies tests → pushes → creates PR
-4. **Merges sequentially with rebasing** — since parallel branches modify shared files:
-   - Merge the least-conflict-prone first (e.g., issues that only add new files)
-   - For subsequent PRs that conflict, launch an agent to rebase onto updated main, resolve conflicts (keeping both sides), and run tests
-   - Force-push the rebased branch, then merge
-5. **Repeats** for any remaining issues that were blocked on this batch
-
-**Merge order strategy**: least conflicts → most conflicts (additive changes first, cross-cutting changes last).
-
----
-
-## Phase 5: Documentation
-
-**Goal**: Create user-facing and agent-facing documentation.
-
-**Prompt**:
-```
-Create README.md to explain and create a CLAUDE.md for agentic development where we explain the stack, project structure, and key details which are needed to make agents work in the best way with this repo
-```
-
-**What happens**:
-1. Launches an `explore` agent to exhaustively document every public API, config field, test count, etc.
-2. Writes **README.md** (user-facing): quick start, config reference, features, development commands
-3. Writes **CLAUDE.md** (agent-facing):
-   - Project overview
-   - Stack and dependencies
-   - Project structure (tree with every file described)
-   - Module dependency graph
-   - Key conventions (config, error handling, concurrency, protocols)
-   - Testing patterns and coverage
-   - Build and run commands
-   - Step-by-step recipes for common tasks (adding features, extending modules)
-
----
-
-## Phase 6: Run and Debug
-
-**Goal**: Build, run against a real target, and debug issues.
-
-**Prompt** (example):
-```
-build and run using cli with this ip and port <host>, <port> use <N> clients
-```
-
-**What happens**:
-1. Builds the binary
-2. Creates a run config targeting the real server
-3. Runs and observes logs
-4. On errors: investigates with `explore` agents, writes debug scripts, analyzes output
-5. Creates a plan (`plan.md`) with prioritized fixes
-
----
-
-## Workflow Diagram
-
-```
-┌─────────────────────────────────────────────┐
-│  Phase 1: PRD (/write-a-prd)                │
-│  Raw notes → Structured PRD + GitHub issue   │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  Phase 2: Issues (/prd-to-issues)           │
-│  PRD → vertical slices + dependency graph    │
-│  + TASKS.md tracking file                    │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  Phase 3: Sequential Foundation              │
-│  Critical-path issues built one at a time    │
-│  (worktree → agent → review → merge)         │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  Phase 4: Parallel Feature Implementation    │
-│  N agents in parallel worktrees              │
-│  → verify → PR → sequential merge+rebase     │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  Phase 5: Documentation                      │
-│  explore agent → README.md + CLAUDE.md       │
-└──────────────────┬──────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────┐
-│  Phase 6: Run & Debug                        │
-│  Build → run → observe → investigate → plan  │
-└─────────────────────────────────────────────┘
-```
-
-## Key Patterns
+## Why this shape
 
 | Pattern | Why |
-|---------|-----|
-| **Vertical slices, not horizontal layers** | Each issue delivers end-to-end value; enables parallel work |
-| **Git worktrees for parallel branches** | Multiple agents work on the same repo simultaneously without conflicts |
-| **Background agents for implementation** | Frees you to monitor, review, and manage while work happens |
-| **Code review agents before merge** | Catches nil checks, validation gaps, missing error handling automatically |
-| **Sequential merge with rebase** | Parallel branches touch shared files; merge one at a time and rebase the rest |
-| **Explore agents for research** | Gather API details, library docs, or codebase context before acting |
-| **TASKS.md as progress tracker** | Single source of truth for what's done, with linked GitHub issues |
-| **CLAUDE.md for agent context** | Gives future agents the conventions, structure, and recipes they need |
-| **Detailed agent prompts** | Include existing code context, exact function signatures, and test specs |
-| **Verify before merge** | Always run linter + tests on the worktree before creating PR |
-
-## Skills Used
-
-| Skill | Phase | Purpose |
-|-------|-------|---------|
-| `/write-a-prd` | 1 | Interview → structured PRD with user stories, modules, config schema |
-| `/prd-to-issues` | 2 | PRD → vertical-slice GitHub issues with dependency graph |
-| `/issues-to-tasks` | 2 | GitHub issues → TASKS.md tracking file with status and dependency graph |
-
-## Agent Types Used
-
-| Agent | When | Purpose |
-|-------|------|---------|
-| `explore` | Before implementation, before docs | Research APIs, gather codebase details |
-| `general-purpose` | Implementation | Build features in worktrees with detailed specs |
-| `general-purpose` | Conflict resolution | Rebase branches, resolve merge conflicts, run tests |
-| `code-review` | Before merge | Review diffs against acceptance criteria, find bugs |
+| --- | --- |
+| Grill before you spec | Most failures come from misalignment, not bad code |
+| Shared glossary + ADRs | Shorter prompts, consistent names, fewer tokens |
+| Vertical slices with blocking edges | Each ticket is demoable and independently grabbable; the frontier drives parallelism |
+| TDD at agreed seams | Tight feedback loops keep agents honest |
+| One integration branch, one review | Parallel work, one coherent PR |
